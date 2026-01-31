@@ -7,7 +7,8 @@
 
 
 struct dayz_mod {
-    uint32_t   workshop_id;
+    //uint64_t   workshop_id;
+    char       workshop_id[32];
     char       name[DAYZ_MODNAME_MAX];
     uint8_t    name_length;
 };

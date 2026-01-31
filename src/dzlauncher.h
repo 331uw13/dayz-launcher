@@ -31,43 +31,15 @@ struct dayz_server {
 
 };
 
-bool get_server_info(char* addr, uint16_t port, struct dayz_server* server);
 
-/*
-struct dzl_ctx {
-    bool            running;
-    char            errmsg_buffer[OPENDZL_ERRMSG_MAX_LENGTH+1];
-    struct string_t error_messages[OPENDZL_MAX_ERROR_MESSAGES];
-    uint16_t        num_error_messages;
-    int             logfile_fd;
-
+struct config {
+    // Directory paths are guranteed to end with '/'
+    char* dayz_workshop_dir; // ...steamapps/workshop/content/221100/
+    char* dayz_steam_dir;    // ...steamapps/common/Dayz/
 };
 
-
-
-void dzl_setup(struct opendzl_ctx* ctx);
-void dzl_free(struct opendzl_ctx* ctx);
-void dzl_open_logfile(struct opendzl_ctx* ctx);
-void dzl_close_logfile(struct opendzl_ctx* ctx);
-void dzl_draw_errmsg(struct opendzl_ctx* ctx);
-*/
-
-
-
-/*
-#define opendzl_write_errmsg(ctx, msg, ...)\
-    opendzl_write_errmsg_ex(ctx, msg, __FILE__, __LINE__, __func__, ##__VA_ARGS__)
-
-void opendzl_write_errmsg_ex
-(
-    struct opendzl_ctx* ctx,
-    const char* msg,
-    const char* from_file,
-    int from_line,
-    const char* from_func,
-    ...
-);
-*/
+bool query_dayz_server(char* addr, uint16_t port, struct dayz_server* server);
+void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct dayz_server* server);
 
 
 

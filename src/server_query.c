@@ -160,7 +160,7 @@ bool get_server_a2s_responses(const char* host, uint16_t query_port,
 
     // At this point we should be able to get received general info about the server.
     string_reserve(server_info, 1024);
-    server_info->size = recv_packet(server_info->bytes, server_info->memsize);
+    server_info->size = recv_packet(server_info->bytes, server_info->mem_size);
 
 
 
@@ -213,7 +213,7 @@ bool get_server_a2s_responses(const char* host, uint16_t query_port,
 
 
     string_reserve(server_mod_info, 1024);
-    server_mod_info->size = recv_packet(server_mod_info->bytes, server_mod_info->memsize);
+    server_mod_info->size = recv_packet(server_mod_info->bytes, server_mod_info->mem_size);
 
 
     // Need to implement this to be able to merge multiple chunks.

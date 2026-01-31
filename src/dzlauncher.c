@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <ncurses.h>
+#include <errno.h>
 
 #include "server_query.h"
 #include "a2s_parser.h"
@@ -11,101 +12,11 @@
 #include "dzlauncher.h"
 
 
-#define OPENDZL_LOG_FILEPATH "/tmp/open-dz-launcher.log"
-#define OPENDZL_MAX_ERROR_MESSAGES 8
-#define OPENDZL_ERRMSG_MAX_LENGTH 511
-
-#define OPENDZL_TUI_ELEM_COLUMNS 16
-#define OPENDZL_TUI_ELEM_ROWS 16
-
-/*
-void opendzl_setup(struct opendzl_ctx* ctx) {
-    ctx->running = true;
-    for(uint16_t i = 0; i < OPENDZL_MAX_ERROR_MESSAGES; i++) {
-        ctx->error_messages[i] = create_string();
-    }
-
-    opendzltui_create(&ctx->tui, OPENDZL_TUI_ELEM_COLUMNS, OPENDZL_TUI_ELEM_ROWS);
-}
-
-void opendzl_free(struct opendzl_ctx* ctx) {
-    for(uint16_t i = 0; i < OPENDZL_MAX_ERROR_MESSAGES; i++) {
-        string_free(&ctx->error_messages[i]);
-    }
-
-    opendzltui_free(&ctx->tui);
-}
-
-void opendzl_open_logfile(struct opendzl_ctx* ctx) {
-    ctx->logfile_fd = open(OPENDZL_LOG_FILEPATH, O_CREAT, S_IRUSR | S_IWUSR);
-}
-
-void opendzl_close_logfile(struct opendzl_ctx* ctx) {
-    if(ctx->logfile_fd > 0) {
-        close(ctx->logfile_fd);
-        ctx->logfile_fd = -1;
-    }
-}
-    
-void opendzl_draw_errmsg(struct opendzl_ctx* ctx) {
-    if(ctx->num_error_messages == 0) {
-        return;   
-    }
-
-    attron(COLOR_PAIR(COLOR_RED));
-
-    for(uint16_t i = 0; i < ctx->num_error_messages; i++) {
-        mvaddstr(i, 0, ctx->error_messages[i].bytes);
-    }
-
-    attroff(COLOR_PAIR(COLOR_RED));
-}
-
-void opendzl_write_errmsg_ex
-(
-    struct opendzl_ctx* ctx,
-    const char* msg,
-    const char* from_file,
-    int from_line,
-    const char* from_func,
-    ...
-){
-    va_list args;
-    va_start(args);
-
-    memset(ctx->errmsg_buffer, 0, sizeof(ctx->errmsg_buffer));
-    const int errmsg_length = vsnprintf(ctx->errmsg_buffer, OPENDZL_ERRMSG_MAX_LENGTH, msg, args);
-
-    bool error_messages_full = false;
-
-    if(ctx->num_error_messages+1 > OPENDZL_MAX_ERROR_MESSAGES) {
-        //asm("int3");
-        for(uint16_t i = 0; i < OPENDZL_MAX_ERROR_MESSAGES-1; i++) {
-            struct string_t* A = &ctx->error_messages[i];
-            struct string_t* B = &ctx->error_messages[i+1];
-
-            string_move(A, B->bytes, B->size);
-        }
-
-        error_messages_full = true;
-    }
-
-    if(!error_messages_full) {
-        ctx->num_error_messages++;
-    }
-    
-    struct string_t* errmsg_str = &ctx->error_messages[ctx->num_error_messages-1]; 
-    string_move(errmsg_str, ctx->errmsg_buffer, errmsg_length);
-
-    va_end(args);
-}
-*/
-
-bool get_server_info(char* addr, uint16_t port, struct dayz_server* server) {
+bool query_dayz_server(char* addr, uint16_t port, struct dayz_server* server) {
     bool result = false;
 
-    struct string_t server_info = create_string();
-    struct string_t server_mod_info = create_string();
+    struct string_t server_info = string_create(0);
+    struct string_t server_mod_info = string_create(0);
 
     if(!get_server_a2s_responses(addr, port, &server_info, &server_mod_info)) {
         fprintf(stderr, "Failed to get correct server A2S responses.\n");
@@ -188,15 +99,129 @@ bool get_server_info(char* addr, uint16_t port, struct dayz_server* server) {
     result = true;
 
 out:
-    string_free(&server_info);
-    string_free(&server_mod_info);
+    free_string(&server_info);
+    free_string(&server_mod_info);
 
     return result;
 }
 
+static
+bool all_mods_have_been_installed(struct config* cfg, struct dayz_server* server) {
+    bool result = false;
+    struct string_t path = string_create(0);
+
+    // Check first all mods have been installed.
+    for(uint8_t i = 0; i < server->num_mods; i++) {
+        struct dayz_mod* mod = &server->mods[i];
+
+        /*
+        // TODO: Update the server query to output mod ids as char array.
+        char workshop_id_str[32] = { 0 };
+        snprintf(workshop_id_str, sizeof(workshop_id_str)-1, 
+                "%li", mod->workshop_id);
+        */
+        string_clear(&path);
+        string_append(&path, cfg->dayz_workshop_dir, -1);
+        string_append(&path, mod->workshop_id, -1);
+        string_nullterm(&path);
+
+        if(access(path.bytes, F_OK) != 0) {
+            goto out;
+        }
+    }
+
+    result =true;
+out:
+    free_string(&path);
+    return result;
+}
+
+void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct dayz_server* server) {
+    struct string_t cmd = string_create(0);
+    struct string_t symlink_name = string_create(0);
+    struct string_t symlink_dst = string_create(0);
+    struct string_t launch_params = string_create(0);
 
 
+    if(!all_mods_have_been_installed(cfg, server)) {
+        printf("Not all mods have been installed.\n");
+        return;
+    }
+
+    printf("\033[32m + All mods have been installed! +\033[0m\n");
 
 
+    // TODO: Do this with dirent instead, much safer.
 
+    // Reset mod symlinks.
+    string_append(&cmd, "rm -rf ", -1);
+    string_append(&cmd, cfg->dayz_steam_dir, -1);
+    string_append(&cmd, "\\@*", -1);
+    string_nullterm(&cmd);
+   
+    printf("Execute: %s\n", cmd.bytes);
+    system(cmd.bytes);
+    string_clear(&cmd);
+
+
+    string_append(&launch_params, "steam -applaunch 221100 -nolauncher ", -1);
+
+    // When creating symlinks to mods, we can collect the mod launch parameters at the same time.
+    string_append(&launch_params, "-mod='", -1);
+
+    for(uint8_t i = 0; i < server->num_mods; i++) {
+        struct dayz_mod* mod = &server->mods[i];
+
+        /*
+        // TODO: Update the server query to output mod ids as char array.
+        char workshop_id_str[32] = { 0 };
+        snprintf(workshop_id_str, sizeof(workshop_id_str)-1, 
+                "%li", mod->workshop_id);       
+        */
+        string_clear(&symlink_name);
+        string_clear(&symlink_dst);
+
+
+        string_append(&symlink_name, cfg->dayz_steam_dir, -1);
+        string_append(&symlink_name, "@", 1);
+        string_append(&symlink_name, mod->workshop_id, -1);
+        string_nullterm(&symlink_name);
+
+
+        string_append(&symlink_dst, cfg->dayz_workshop_dir, -1);
+        string_append(&symlink_dst, mod->workshop_id, -1);
+        string_nullterm(&symlink_dst);
+
+        printf("%s -> %s\n",
+                symlink_name.bytes,
+                symlink_dst.bytes);
+
+        if(symlink(symlink_dst.bytes, symlink_name.bytes) != 0) {
+            fprintf(stderr, "%s: Failed to create symlink | %s\n", __func__, strerror(errno));
+            goto error;
+        }
+
+        // Add mod to launch parameters.
+        string_append(&launch_params, "@", 1);
+        string_append(&launch_params, mod->workshop_id, -1);
+        if(i+1 < server->num_mods) {
+            string_append(&launch_params, ";", 1);
+        }
+    }
+
+    string_append(&launch_params, "' ", -1);
+    string_append(&launch_params, "-connect=", -1);
+    string_append(&launch_params, game_addr, -1);
+    string_append(&launch_params, " -port=", -1);
+    string_append(&launch_params, game_port, -1);
+    string_append(&launch_params, " &", -1);
+    printf("%s\n", launch_params.bytes);
+    system(launch_params.bytes);
+
+error:
+    free_string(&launch_params);
+    free_string(&symlink_name);
+    free_string(&symlink_dst);
+    free_string(&cmd);
+}
 

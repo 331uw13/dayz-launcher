@@ -124,14 +124,15 @@ bool parse_a2s_rules(
         //       this failed to get the workshop id but we must be able to parse the rest.
         //       so try to look for bytes which could be the mod name length (if everything fails)
 
+        size_t workshop_id = 0;
 
-        mod->workshop_id = read_u32(buffer + offset);
+        workshop_id = read_u32(buffer + offset);
 
         // Sometimes there may be invalid workshop id
         // for some reason its not always 4 bytes long and its bit of a mess...
         // TODO: Add explain from notes if this works..
 
-        if(mod->workshop_id < 0x3b9aca00) {
+        if(workshop_id < 0x3b9aca00) {
             
             uint8_t bytes[8] = { 0 };
             memmove(bytes, buffer + offset, 8);
@@ -139,7 +140,7 @@ bool parse_a2s_rules(
             bytes[3] = bytes[7];
             memset(bytes + 4, 0, 8-4);
 
-            mod->workshop_id = read_u32(bytes);
+            workshop_id = read_u32(bytes);
 
             offset += 8;
         }
@@ -148,8 +149,13 @@ bool parse_a2s_rules(
         }
 
 #ifdef DEBUG
-        printf("\033[36m(DEBUG): (4:u32) workshop id = %u\033[0m\n", mod->workshop_id);
+        printf("\033[36m(DEBUG): (4:u32) workshop id = %u\033[0m\n", workshop_id);
 #endif
+
+        // Convert workshop id to char array so its more friendly to work with
+        // when launching the game.
+        snprintf(mod->workshop_id, sizeof(mod->workshop_id)-1,
+                "%li", workshop_id);
 
         mod->name_length = buffer[offset++];
         memset(mod->name, 0, DAYZ_MODNAME_MAX);
