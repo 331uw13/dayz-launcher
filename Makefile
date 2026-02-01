@@ -1,6 +1,6 @@
 CC = gcc
-CC_FLAGS = -O2 -Wall -Wextra 
-LD_FLAGS = 
+CC_FLAGS = -ggdb -Wall -Wextra 
+LD_FLAGS = -lraylib -lGL -lX11 -lpthread -lm
 
 TARGET_NAME = dayz-launcher
 

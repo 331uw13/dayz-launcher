@@ -759,7 +759,7 @@ RAYGUIAPI int GuiGrid(Rectangle bounds, const char *text, float spacing, int sub
 
 // Advance controls set
 RAYGUIAPI int GuiListView(Rectangle bounds, const char *text, int *scrollIndex, int *active);          // List View control
-RAYGUIAPI int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollIndex, int *active, int *focus); // List View with extended parameters
+RAYGUIAPI int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollIndex, int *active, int *focus, int text_alignment); // List View with extended parameters
 RAYGUIAPI int GuiMessageBox(Rectangle bounds, const char *title, const char *message, const char *buttons); // Message Box control, displays a message
 RAYGUIAPI int GuiTextInputBox(Rectangle bounds, const char *title, const char *message, const char *buttons, char *text, int textMaxSize, bool *secretViewActive); // Text Input Box control, ask for text, supports secret
 RAYGUIAPI int GuiColorPicker(Rectangle bounds, const char *text, Color *color);                        // Color Picker control (multiple color controls)
@@ -3565,13 +3565,13 @@ int GuiListView(Rectangle bounds, const char *text, int *scrollIndex, int *activ
 
     if (text != NULL) items = GuiTextSplit(text, ';', &itemCount, NULL);
 
-    result = GuiListViewEx(bounds, items, itemCount, scrollIndex, active, NULL);
+    result = GuiListViewEx(bounds, items, itemCount, scrollIndex, active, NULL, TEXT_ALIGN_CENTER);
 
     return result;
 }
 
 // List View control with extended parameters
-int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollIndex, int *active, int *focus)
+int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollIndex, int *active, int *focus, int text_alignment)
 {
     int result = 0;
     GuiState state = guiState;
@@ -3618,8 +3618,10 @@ int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollInd
                     itemFocused = startIndex + i;
                     if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
                     {
-                        if (itemSelected == (startIndex + i)) itemSelected = -1;
-                        else itemSelected = startIndex + i;
+                        //if (itemSelected == (startIndex + i)) itemSelected = -1;
+                        //else itemSelected = startIndex + i;
+                        itemSelected = startIndex + i;
+                        result = 1;
                     }
                     break;
                 }
@@ -3647,6 +3649,7 @@ int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollInd
     }
     //--------------------------------------------------------------------
 
+
     // Draw control
     //--------------------------------------------------------------------
     GuiDrawRectangle(bounds, GuiGetStyle(LISTVIEW, BORDER_WIDTH), GetColor(GuiGetStyle(LISTVIEW, BORDER + state*3)), GetColor(GuiGetStyle(DEFAULT, BACKGROUND_COLOR)));     // Draw background
@@ -3660,26 +3663,29 @@ int GuiListViewEx(Rectangle bounds, const char **text, int count, int *scrollInd
         {
             if ((startIndex + i) == itemSelected) GuiDrawRectangle(itemBounds, GuiGetStyle(LISTVIEW, LIST_ITEMS_BORDER_WIDTH), GetColor(GuiGetStyle(LISTVIEW, BORDER_COLOR_DISABLED)), GetColor(GuiGetStyle(LISTVIEW, BASE_COLOR_DISABLED)));
 
-            GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), GuiGetStyle(LISTVIEW, TEXT_ALIGNMENT), GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_DISABLED)));
+            GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), text_alignment, GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_DISABLED)));
         }
         else
         {
+            //GuiSetStyle(LABEL, TEXT_ALIGNMENT, TEXT_ALIGN_LEFT);
             if (((startIndex + i) == itemSelected) && (active != NULL))
             {
                 // Draw item selected
                 GuiDrawRectangle(itemBounds, GuiGetStyle(LISTVIEW, LIST_ITEMS_BORDER_WIDTH), GetColor(GuiGetStyle(LISTVIEW, BORDER_COLOR_PRESSED)), GetColor(GuiGetStyle(LISTVIEW, BASE_COLOR_PRESSED)));
-                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), GuiGetStyle(LISTVIEW, TEXT_ALIGNMENT), GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_PRESSED)));
+                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), text_alignment, GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_PRESSED)));
             }
             else if (((startIndex + i) == itemFocused)) // && (focus != NULL))  // NOTE: We want items focused, despite not returned!
             {
                 // Draw item focused
                 GuiDrawRectangle(itemBounds, GuiGetStyle(LISTVIEW, LIST_ITEMS_BORDER_WIDTH), GetColor(GuiGetStyle(LISTVIEW, BORDER_COLOR_FOCUSED)), GetColor(GuiGetStyle(LISTVIEW, BASE_COLOR_FOCUSED)));
-                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), GuiGetStyle(LISTVIEW, TEXT_ALIGNMENT), GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_FOCUSED)));
+                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), text_alignment, GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_FOCUSED)));
             }
             else
             {
                 // Draw item normal (no rectangle)
-                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), GuiGetStyle(LISTVIEW, TEXT_ALIGNMENT), GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_NORMAL)));
+                //GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), GuiGetStyle(LISTVIEW, TEXT_ALIGNMENT), GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_NORMAL)));
+
+                GuiDrawText(text[startIndex + i], GetTextBounds(DEFAULT, itemBounds), text_alignment, GetColor(GuiGetStyle(LISTVIEW, TEXT_COLOR_NORMAL)));
             }
         }
 

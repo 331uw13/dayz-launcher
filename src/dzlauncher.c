@@ -10,6 +10,7 @@
 #include "a2s_parser.h"
 #include "a2s_decoder.h"
 #include "dzlauncher.h"
+#include "string.h"
 
 
 bool query_dayz_server(char* addr, uint16_t port, struct dayz_server* server) {
@@ -50,8 +51,8 @@ bool query_dayz_server(char* addr, uint16_t port, struct dayz_server* server) {
     }
 
 
-    memset(server->name, 0, OPENDZL_MAX_SERVER_NAME);
-    memset(server->map_name, 0, OPENDZL_MAX_SERVER_MAP_NAME);
+    memset(server->name, 0, SERVER_NAME_MAX);
+    memset(server->map_name, 0, SERVER_MAP_NAME_MAX);
 
     server->name_length = 0;
     server->map_name_length = 0;
@@ -106,7 +107,7 @@ out:
 }
 
 static
-bool all_mods_have_been_installed(struct config* cfg, struct dayz_server* server) {
+bool all_mods_have_been_installed(struct app_config* cfg, struct dayz_server* server) {
     bool result = false;
     struct string_t path = string_create(0);
 
@@ -114,12 +115,6 @@ bool all_mods_have_been_installed(struct config* cfg, struct dayz_server* server
     for(uint8_t i = 0; i < server->num_mods; i++) {
         struct dayz_mod* mod = &server->mods[i];
 
-        /*
-        // TODO: Update the server query to output mod ids as char array.
-        char workshop_id_str[32] = { 0 };
-        snprintf(workshop_id_str, sizeof(workshop_id_str)-1, 
-                "%li", mod->workshop_id);
-        */
         string_clear(&path);
         string_append(&path, cfg->dayz_workshop_dir, -1);
         string_append(&path, mod->workshop_id, -1);
@@ -136,7 +131,7 @@ out:
     return result;
 }
 
-void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct dayz_server* server) {
+void launch_dayz(struct app_config* cfg, char* game_addr, char* game_port, struct dayz_server* server) {
     struct string_t cmd = string_create(0);
     struct string_t symlink_name = string_create(0);
     struct string_t symlink_dst = string_create(0);
@@ -163,7 +158,6 @@ void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct da
     system(cmd.bytes);
     string_clear(&cmd);
 
-
     string_append(&launch_params, "steam -applaunch 221100 -nolauncher ", -1);
 
     // When creating symlinks to mods, we can collect the mod launch parameters at the same time.
@@ -172,15 +166,8 @@ void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct da
     for(uint8_t i = 0; i < server->num_mods; i++) {
         struct dayz_mod* mod = &server->mods[i];
 
-        /*
-        // TODO: Update the server query to output mod ids as char array.
-        char workshop_id_str[32] = { 0 };
-        snprintf(workshop_id_str, sizeof(workshop_id_str)-1, 
-                "%li", mod->workshop_id);       
-        */
         string_clear(&symlink_name);
         string_clear(&symlink_dst);
-
 
         string_append(&symlink_name, cfg->dayz_steam_dir, -1);
         string_append(&symlink_name, "@", 1);
@@ -214,7 +201,7 @@ void launch_dayz(struct config* cfg, char* game_addr, char* game_port, struct da
     string_append(&launch_params, game_addr, -1);
     string_append(&launch_params, " -port=", -1);
     string_append(&launch_params, game_port, -1);
-    string_append(&launch_params, " &", -1);
+    //string_append(&launch_params, " &", -1);
     printf("%s\n", launch_params.bytes);
     system(launch_params.bytes);
 
